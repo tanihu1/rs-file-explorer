@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use crate::App;
+use crate::app::App;
 
 pub struct AppGui {
     app: App,
@@ -10,7 +10,7 @@ pub struct AppGui {
 impl Default for AppGui {
     fn default() -> Self {
         Self {
-            app: App {},
+            app: App::default(),
             initialized: false,
         }
     }
@@ -33,7 +33,9 @@ impl AppGui {
         if self.initialized {
             panic!("Gui initialization called twice!");
         }
+
         egui_extras::install_image_loaders(ctx);
+
         self.initialized = true;
     }
 
@@ -60,9 +62,15 @@ impl AppGui {
     fn draw_bottom_panel(&self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::Grid::new("file_grid").show(ui, |ui| {
-                ui.add(egui::Image::new(egui::include_image!(
-                    "../assets/folder_icon.svg"
-                )));
+                let file_itr_result = self.app.get_current_dir_contents();
+
+                if let Ok(itr) = file_itr_result {
+                    for _ in itr {
+                        ui.add(egui::Image::new(egui::include_image!(
+                            "../assets/folder_icon.svg"
+                        )));
+                    }
+                }
             });
         });
     }
