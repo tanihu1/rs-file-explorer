@@ -6,3 +6,10 @@ edition = "2024"
 [dependencies]
 eframe = "0.32.3"
 egui_extras = {version = "0.32.3", features = ["svg"]}
+
+[profile.release]
+strip = "symbols"
+lto = "fat"
+codegen-units = 1
+opt-level = "z"
+panic = "abort"
