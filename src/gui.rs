@@ -1,10 +1,11 @@
-use eframe::egui;
+use eframe::egui::{self, FontDefinitions};
 
 use crate::app::App;
 
 pub struct AppGui {
     app: App,
     initialized: bool,
+    font_id: egui::FontId,
 }
 
 impl Default for AppGui {
@@ -12,17 +13,19 @@ impl Default for AppGui {
         Self {
             app: App::default(),
             initialized: false,
+            font_id: egui::FontId::proportional(18.0),
         }
     }
 }
 
 impl eframe::App for AppGui {
-    fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         // Lazy init
         if !self.initialized {
             self.initialize(ctx);
         }
 
+        self.set_scale(ctx);
         self.draw_top_panel(ctx);
         self.draw_bottom_panel(ctx);
     }
@@ -37,6 +40,10 @@ impl AppGui {
         egui_extras::install_image_loaders(ctx);
 
         self.initialized = true;
+    }
+
+    fn set_scale(&self, ctx: &egui::Context) {
+        ctx.set_pixels_per_point(1.5);
     }
 
     fn draw_top_panel(&self, ctx: &egui::Context) {
@@ -54,7 +61,9 @@ impl AppGui {
                 ui.separator();
 
                 // Current path
-                ui.label("Nav path placeholder");
+                if let Some(current_path) = self.app.get_current_path() {
+                    ui.label(current_path);
+                }
             })
         });
     }
