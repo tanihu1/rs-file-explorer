@@ -1,6 +1,6 @@
 use std::{fs, process::Command};
 
-use eframe::egui::{self, RichText, TextEdit};
+use eframe::egui::{self, Label, RichText, TextEdit};
 
 use crate::app::App;
 
@@ -74,7 +74,8 @@ impl AppGui {
                 let path_text_box = ui.add(
                     TextEdit::singleline(&mut self.displayed_path)
                         .cursor_at_end(true)
-                        .frame(false),
+                        .frame(false)
+                        .clip_text(false),
                 );
 
                 if path_text_box.has_focus() {
@@ -92,9 +93,9 @@ impl AppGui {
     }
 
     fn draw_directory_panel(&mut self, ctx: &egui::Context) {
-        const COLUMN_WIDTH: f32 = 30.0;
+        const COLUMN_WIDTH: f32 = 35.0;
         const ROW_HEIGHT: f32 = 30.0;
-        const SPACING: egui::Vec2 = egui::vec2(12.0, 12.0);
+        const SPACING: egui::Vec2 = egui::vec2(20.0, 20.0);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let max_column_num = (ui.available_width() / COLUMN_WIDTH) as usize;
@@ -149,21 +150,50 @@ impl From<fs::DirEntry> for DirEntry {
 }
 
 impl DirEntry {
-    // A reference to the app is needed for the buttons
+    // A reference to the app is needed for button functionality
     fn draw(&self, ui: &mut egui::Ui, app_ref: &mut App) {
-        // TODO Play with hover settings for a better look
+        let dir_btn =
+            egui::ImageButton::new(egui::include_image!("../assets/folder_icon.svg")).frame(false);
+        let file_btn =
+            egui::ImageButton::new(egui::include_image!("../assets/file_icon.svg")).frame(false);
+
+        // Visual settigns
+        let hightlight_stroke = ui.style().visuals.widgets.hovered.bg_stroke;
+        let dir_hightlight_padding = 2.0;
+        let file_hightlight_padding = 1.0;
+        let highlight_rounding = 4.0;
+        let hightlight_kind = egui::StrokeKind::Outside;
+
         ui.vertical(|ui| {
             if self.is_dir {
-                let dir_btn = ui.add(egui::ImageButton::new(egui::include_image!(
-                    "../assets/folder_icon.svg"
-                )));
-                if dir_btn.clicked() {
+                let dir_btn_handle = ui.add(dir_btn);
+
+                // Creating custom hover effect for button
+                if dir_btn_handle.hovered() {
+                    let hightlight_area = dir_btn_handle.rect.expand(dir_hightlight_padding);
+                    ui.painter().rect_stroke(
+                        hightlight_area,
+                        highlight_rounding,
+                        hightlight_stroke,
+                        hightlight_kind,
+                    );
+                }
+
+                if dir_btn_handle.clicked() {
                     app_ref.open_dir(self.name.clone());
                 }
             } else {
-                let file_btn = ui.add(egui::ImageButton::new(egui::include_image!(
-                    "../assets/file_icon.svg"
-                )));
+                let file_btn_handle = ui.add(file_btn);
+
+                if file_btn_handle.hovered() {
+                    let highlight_area = file_btn_handle.rect.expand(file_hightlight_padding);
+                    ui.painter().rect_stroke(
+                        highlight_area,
+                        highlight_rounding,
+                        hightlight_stroke,
+                        hightlight_kind,
+                    );
+                }
 
                 // TODO Verify this works
                 #[cfg(target_os = "windows")]
@@ -176,12 +206,13 @@ impl DirEntry {
 
                 #[cfg(target_os = "linux")]
                 {
-                    if file_btn.clicked() {
+                    if file_btn_handle.clicked() {
                         let _ = Command::new("xdg-open").arg(&self.abs_path).spawn();
                     }
                 }
             }
-            ui.label(RichText::new(self.name.clone()).size(10.0));
+            // ui.label(RichText::new(self.name.clone()).size(10.0));
+            ui.add(Label::new(RichText::new(self.name.clone()).size(10.0)).wrap());
         });
     }
 }
