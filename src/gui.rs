@@ -1,15 +1,14 @@
 use std::{fs, process::Command};
 
-use eframe::{
-    egui::{self, FontDefinitions, Label, RichText, TextStyle},
-    epaint::text::FontInsert,
-};
+use eframe::egui::{self, RichText, TextEdit};
 
 use crate::app::App;
 
 pub struct AppGui {
     app: App,
     initialized: bool,
+    displayed_path: String,
+    is_editing_path: bool,
 }
 
 impl Default for AppGui {
@@ -17,6 +16,8 @@ impl Default for AppGui {
         Self {
             app: App::default(),
             initialized: false,
+            displayed_path: String::new(),
+            is_editing_path: false,
         }
     }
 }
@@ -42,6 +43,9 @@ impl AppGui {
 
         egui_extras::install_image_loaders(ctx);
 
+        let displayed_path = self.app.get_current_path().unwrap();
+        self.displayed_path = displayed_path.to_string();
+
         self.initialized = true;
     }
 
@@ -63,9 +67,25 @@ impl AppGui {
 
                 ui.separator();
 
-                // Current path
-                if let Some(current_path) = self.app.get_current_path() {
-                    ui.label(current_path);
+                if !self.is_editing_path {
+                    self.displayed_path = self.app.get_current_path().unwrap().to_string();
+                }
+
+                let path_text_box = ui.add(
+                    TextEdit::singleline(&mut self.displayed_path)
+                        .cursor_at_end(true)
+                        .frame(false),
+                );
+
+                if path_text_box.has_focus() {
+                    self.is_editing_path = true;
+                } else {
+                    if self.is_editing_path {
+                        self.is_editing_path = false;
+
+                        // New path given by user. Need to be tested:
+                        self.app.set_path(self.displayed_path.clone());
+                    }
                 }
             })
         });

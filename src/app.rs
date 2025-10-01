@@ -59,4 +59,10 @@ impl App {
         // Branch might have divereged, clear history
         self.path_history.clear();
     }
+
+    pub fn set_path(&mut self, path: String) {
+        if fs::read_dir(&path).is_ok() {
+            self.current_path = PathBuf::from(path);
+        }
+    }
 }
