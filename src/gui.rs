@@ -1,6 +1,6 @@
 use std::fs;
 
-use eframe::egui::{self};
+use eframe::egui::{self, Button, Vec2};
 
 use crate::app::App;
 
@@ -121,14 +121,14 @@ impl From<fs::DirEntry> for DirEntry {
 
 impl DirEntry {
     fn draw(&self, ui: &mut egui::Ui) {
-        // TODO match the file type
+        // Play with hover settings for a better look
         ui.vertical(|ui| {
             if self.is_dir {
-                ui.add(egui::Image::new(egui::include_image!(
+                ui.add(egui::ImageButton::new(egui::include_image!(
                     "../assets/folder_icon.svg"
                 )));
             } else {
-                ui.add(egui::Image::new(egui::include_image!(
+                ui.add(egui::ImageButton::new(egui::include_image!(
                     "../assets/file_icon.svg"
                 )));
             }
