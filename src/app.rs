@@ -5,10 +5,7 @@ use std::{
 
 pub struct App {
     current_path: PathBuf,
-}
-
-pub struct DirEntry {
-    is_dir: bool,
+    path_history: Vec<String>,
 }
 
 impl Default for App {
@@ -17,6 +14,7 @@ impl Default for App {
 
         Self {
             current_path: current_path,
+            path_history: Vec::new(),
         }
     }
 }
@@ -28,5 +26,30 @@ impl App {
 
     pub fn get_current_path(&self) -> Option<&str> {
         self.current_path.to_str()
+    }
+
+    pub fn navigate_back(&mut self) {
+        // TODO make simpler
+        let prev_path_suffix = self
+            .current_path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        // let prev_path_suffix = "/".to_string() + prev_path_suffix;
+
+        self.path_history.push(prev_path_suffix);
+
+        self.current_path.pop();
+    }
+
+    pub fn navigate_forward(&mut self) {
+        let prev_path_suffix = self.path_history.pop();
+        if let Some(suffix) = prev_path_suffix {
+            dbg!(&suffix);
+            self.current_path.push(suffix);
+        }
     }
 }

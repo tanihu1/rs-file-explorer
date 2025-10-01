@@ -48,16 +48,18 @@ impl AppGui {
         ctx.set_pixels_per_point(scale);
     }
 
-    fn draw_top_panel(&self, ctx: &egui::Context) {
+    fn draw_top_panel(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("nav_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 // Back/Forward buttons
                 if ui.button("<").clicked() {
                     println!("Left nav button clicked!");
+                    self.app.navigate_back();
                 }
 
                 if ui.button(">").clicked() {
                     println!("Right nav button clicked!");
+                    self.app.navigate_forward();
                 }
 
                 ui.separator();
