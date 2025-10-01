@@ -7,9 +7,13 @@ pub struct App {
     current_path: PathBuf,
 }
 
+pub struct DirEntry {
+    is_dir: bool,
+}
+
 impl Default for App {
     fn default() -> Self {
-        let mut current_path = fs::canonicalize("./").expect("Error inititalizing current path.");
+        let current_path = fs::canonicalize("./").expect("Error inititalizing current path.");
 
         Self {
             current_path: current_path,

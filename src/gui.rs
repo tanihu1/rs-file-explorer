@@ -1,3 +1,5 @@
+use std::fs;
+
 use eframe::egui::{self, FontDefinitions};
 
 use crate::app::App;
@@ -25,7 +27,7 @@ impl eframe::App for AppGui {
             self.initialize(ctx);
         }
 
-        self.set_scale(ctx);
+        self.set_scale(ctx, 1.5);
         self.draw_top_panel(ctx);
         self.draw_bottom_panel(ctx);
     }
@@ -42,8 +44,8 @@ impl AppGui {
         self.initialized = true;
     }
 
-    fn set_scale(&self, ctx: &egui::Context) {
-        ctx.set_pixels_per_point(1.5);
+    fn set_scale(&self, ctx: &egui::Context, scale: f32) {
+        ctx.set_pixels_per_point(scale);
     }
 
     fn draw_top_panel(&self, ctx: &egui::Context) {
@@ -71,16 +73,40 @@ impl AppGui {
     fn draw_bottom_panel(&self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::Grid::new("file_grid").show(ui, |ui| {
-                let file_itr_result = self.app.get_current_dir_contents();
+                let file_itr_result = self.app.get_current_dir_contents().unwrap();
 
-                if let Ok(itr) = file_itr_result {
-                    for _ in itr {
-                        ui.add(egui::Image::new(egui::include_image!(
-                            "../assets/folder_icon.svg"
-                        )));
+                for entry in file_itr_result {
+                    if let Ok(entry_result) = entry {
+                        let gui_dir_entry = DirEntry::from(entry_result);
+                        gui_dir_entry.draw(ui);
                     }
                 }
             });
+        });
+    }
+}
+
+struct DirEntry {
+    name: String,
+    is_dir: bool,
+}
+
+impl From<fs::DirEntry> for DirEntry {
+    fn from(value: fs::DirEntry) -> Self {
+        let name = value.file_name().into_string().unwrap();
+        let is_dir = value.file_type().unwrap().is_dir();
+
+        Self { name, is_dir }
+    }
+}
+
+impl DirEntry {
+    fn draw(&self, ui: &mut egui::Ui) {
+        // TODO match the file type
+        ui.vertical(|ui| {
+            ui.add(egui::Image::new(egui::include_image!(
+                "../assets/folder_icon.svg"
+            )));
         });
     }
 }
