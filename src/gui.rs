@@ -142,8 +142,19 @@ impl DirEntry {
                     "../assets/file_icon.svg"
                 )));
 
-                if file_btn.clicked() {
-                    let _ = Command::new("xdg-open").arg(&self.abs_path).spawn();
+                // #[cfg(target_os = "windows")]
+                // {
+                //     let path = self.abs_path.clone();
+                //     if file_btn.clicked() {
+                //         let _ = Command::new("cmd").arg(&["/C", "start", "", &path]).spawn();
+                //     }
+                // }
+
+                #[cfg(target_os = "linux")]
+                {
+                    if file_btn.clicked() {
+                        let _ = Command::new("xdg-open").arg(&self.abs_path).spawn();
+                    }
                 }
             }
             ui.label(self.name.clone());
