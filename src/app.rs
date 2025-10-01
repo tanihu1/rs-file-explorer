@@ -52,4 +52,11 @@ impl App {
             self.current_path.push(suffix);
         }
     }
+
+    pub fn open_dir(&mut self, dir_name: String) {
+        self.current_path.push(dir_name);
+
+        // Branch might have divereged, clear history
+        self.path_history.clear();
+    }
 }

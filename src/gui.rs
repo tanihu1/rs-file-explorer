@@ -1,6 +1,6 @@
 use std::fs;
 
-use eframe::egui::{self, Button, Vec2};
+use eframe::egui::{self};
 
 use crate::app::App;
 
@@ -70,7 +70,7 @@ impl AppGui {
         });
     }
 
-    fn draw_directory_panel(&self, ctx: &egui::Context) {
+    fn draw_directory_panel(&mut self, ctx: &egui::Context) {
         const COLUMN_WIDTH: f32 = 30.0;
         const ROW_HEIGHT: f32 = 30.0;
 
@@ -96,7 +96,7 @@ impl AppGui {
                         if let Ok(entry_result) = entry {
                             let gui_dir_entry = DirEntry::from(entry_result);
 
-                            gui_dir_entry.draw(ui);
+                            gui_dir_entry.draw(ui, &mut self.app);
                         }
                     }
                     ui.end_row();
@@ -120,13 +120,17 @@ impl From<fs::DirEntry> for DirEntry {
 }
 
 impl DirEntry {
-    fn draw(&self, ui: &mut egui::Ui) {
+    // A reference to the app is needed for the buttons
+    fn draw(&self, ui: &mut egui::Ui, app_ref: &mut App) {
         // Play with hover settings for a better look
         ui.vertical(|ui| {
             if self.is_dir {
-                ui.add(egui::ImageButton::new(egui::include_image!(
+                let dir_btn = ui.add(egui::ImageButton::new(egui::include_image!(
                     "../assets/folder_icon.svg"
                 )));
+                if dir_btn.clicked() {
+                    app_ref.open_dir(self.name.clone());
+                }
             } else {
                 ui.add(egui::ImageButton::new(egui::include_image!(
                     "../assets/file_icon.svg"
