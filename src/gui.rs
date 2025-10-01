@@ -1,6 +1,9 @@
 use std::{fs, process::Command};
 
-use eframe::egui::{self};
+use eframe::{
+    egui::{self, FontDefinitions, Label, RichText, TextStyle},
+    epaint::text::FontInsert,
+};
 
 use crate::app::App;
 
@@ -51,12 +54,10 @@ impl AppGui {
             ui.horizontal(|ui| {
                 // Back/Forward buttons
                 if ui.button("<").clicked() {
-                    println!("Left nav button clicked!");
                     self.app.navigate_back();
                 }
 
                 if ui.button(">").clicked() {
-                    println!("Right nav button clicked!");
                     self.app.navigate_forward();
                 }
 
@@ -73,6 +74,7 @@ impl AppGui {
     fn draw_directory_panel(&mut self, ctx: &egui::Context) {
         const COLUMN_WIDTH: f32 = 30.0;
         const ROW_HEIGHT: f32 = 30.0;
+        const SPACING: egui::Vec2 = egui::vec2(12.0, 12.0);
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let max_column_num = (ui.available_width() / COLUMN_WIDTH) as usize;
@@ -81,6 +83,7 @@ impl AppGui {
                 .min_col_width(COLUMN_WIDTH)
                 .max_col_width(COLUMN_WIDTH)
                 .min_row_height(ROW_HEIGHT)
+                .spacing(SPACING)
                 .show(ui, |ui| {
                     let file_itr_result = self.app.get_current_dir_contents().unwrap();
                     let mut col_count = 0;
@@ -128,7 +131,7 @@ impl From<fs::DirEntry> for DirEntry {
 impl DirEntry {
     // A reference to the app is needed for the buttons
     fn draw(&self, ui: &mut egui::Ui, app_ref: &mut App) {
-        // Play with hover settings for a better look
+        // TODO Play with hover settings for a better look
         ui.vertical(|ui| {
             if self.is_dir {
                 let dir_btn = ui.add(egui::ImageButton::new(egui::include_image!(
@@ -142,13 +145,14 @@ impl DirEntry {
                     "../assets/file_icon.svg"
                 )));
 
-                // #[cfg(target_os = "windows")]
-                // {
-                //     let path = self.abs_path.clone();
-                //     if file_btn.clicked() {
-                //         let _ = Command::new("cmd").arg(&["/C", "start", "", &path]).spawn();
-                //     }
-                // }
+                // TODO Verify this works
+                #[cfg(target_os = "windows")]
+                {
+                    let path = self.abs_path.clone();
+                    if file_btn.clicked() {
+                        let _ = Command::new("explorer").arg("/select,").arg(&path).spawn();
+                    }
+                }
 
                 #[cfg(target_os = "linux")]
                 {
@@ -157,7 +161,7 @@ impl DirEntry {
                     }
                 }
             }
-            ui.label(self.name.clone());
+            ui.label(RichText::new(self.name.clone()).size(10.0));
         });
     }
 }
