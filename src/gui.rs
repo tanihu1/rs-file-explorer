@@ -1,13 +1,12 @@
 use std::fs;
 
-use eframe::egui::{self, FontDefinitions};
+use eframe::egui::{self};
 
 use crate::app::App;
 
 pub struct AppGui {
     app: App,
     initialized: bool,
-    font_id: egui::FontId,
 }
 
 impl Default for AppGui {
@@ -15,7 +14,6 @@ impl Default for AppGui {
         Self {
             app: App::default(),
             initialized: false,
-            font_id: egui::FontId::proportional(18.0),
         }
     }
 }
@@ -29,7 +27,7 @@ impl eframe::App for AppGui {
 
         self.set_scale(ctx, 1.5);
         self.draw_top_panel(ctx);
-        self.draw_bottom_panel(ctx);
+        self.draw_directory_panel(ctx);
     }
 }
 
@@ -72,15 +70,29 @@ impl AppGui {
         });
     }
 
-    fn draw_bottom_panel(&self, ctx: &egui::Context) {
+    fn draw_directory_panel(&self, ctx: &egui::Context) {
+        const COLUMN_WIDTH: f32 = 30.0;
+        const ROW_HEIGHT: f32 = 30.0;
+
         egui::CentralPanel::default().show(ctx, |ui| {
+            let max_column_num = (ui.available_width() / COLUMN_WIDTH) as usize;
+
             egui::Grid::new("file_grid")
-                .min_col_width(30.0)
-                .min_row_height(30.0)
+                .min_col_width(COLUMN_WIDTH)
+                .max_col_width(COLUMN_WIDTH)
+                .min_row_height(ROW_HEIGHT)
                 .show(ui, |ui| {
                     let file_itr_result = self.app.get_current_dir_contents().unwrap();
+                    let mut col_count = 0;
 
                     for entry in file_itr_result {
+                        if col_count == max_column_num {
+                            col_count = 0;
+                            ui.end_row();
+                        } else {
+                            col_count += 1;
+                        }
+
                         if let Ok(entry_result) = entry {
                             let gui_dir_entry = DirEntry::from(entry_result);
 
