@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, process::Command};
 
 use eframe::egui::{self};
 
@@ -108,14 +108,20 @@ impl AppGui {
 struct DirEntry {
     name: String,
     is_dir: bool,
+    abs_path: String,
 }
 
 impl From<fs::DirEntry> for DirEntry {
     fn from(value: fs::DirEntry) -> Self {
         let name = value.file_name().into_string().unwrap();
         let is_dir = value.file_type().unwrap().is_dir();
+        let abs_path = value.path().to_str().unwrap().to_string();
 
-        Self { name, is_dir }
+        Self {
+            name,
+            is_dir,
+            abs_path,
+        }
     }
 }
 
@@ -132,9 +138,13 @@ impl DirEntry {
                     app_ref.open_dir(self.name.clone());
                 }
             } else {
-                ui.add(egui::ImageButton::new(egui::include_image!(
+                let file_btn = ui.add(egui::ImageButton::new(egui::include_image!(
                     "../assets/file_icon.svg"
                 )));
+
+                if file_btn.clicked() {
+                    let _ = Command::new("xdg-open").arg(&self.abs_path).spawn();
+                }
             }
             ui.label(self.name.clone());
         });
