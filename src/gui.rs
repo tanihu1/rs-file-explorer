@@ -72,16 +72,21 @@ impl AppGui {
 
     fn draw_bottom_panel(&self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::Grid::new("file_grid").show(ui, |ui| {
-                let file_itr_result = self.app.get_current_dir_contents().unwrap();
+            egui::Grid::new("file_grid")
+                .min_col_width(30.0)
+                .min_row_height(30.0)
+                .show(ui, |ui| {
+                    let file_itr_result = self.app.get_current_dir_contents().unwrap();
 
-                for entry in file_itr_result {
-                    if let Ok(entry_result) = entry {
-                        let gui_dir_entry = DirEntry::from(entry_result);
-                        gui_dir_entry.draw(ui);
+                    for entry in file_itr_result {
+                        if let Ok(entry_result) = entry {
+                            let gui_dir_entry = DirEntry::from(entry_result);
+
+                            gui_dir_entry.draw(ui);
+                        }
                     }
-                }
-            });
+                    ui.end_row();
+                });
         });
     }
 }
@@ -104,9 +109,16 @@ impl DirEntry {
     fn draw(&self, ui: &mut egui::Ui) {
         // TODO match the file type
         ui.vertical(|ui| {
-            ui.add(egui::Image::new(egui::include_image!(
-                "../assets/folder_icon.svg"
-            )));
+            if self.is_dir {
+                ui.add(egui::Image::new(egui::include_image!(
+                    "../assets/folder_icon.svg"
+                )));
+            } else {
+                ui.add(egui::Image::new(egui::include_image!(
+                    "../assets/file_icon.svg"
+                )));
+            }
+            ui.label(self.name.clone());
         });
     }
 }
