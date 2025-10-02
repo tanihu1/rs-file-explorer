@@ -26,7 +26,7 @@ impl Default for AppGui {
 
 impl eframe::App for AppGui {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        // Lazy init
+        // TODO Lazy init, check for better initialization?
         if !self.initialized {
             self.initialize(ctx);
         }
@@ -38,6 +38,11 @@ impl eframe::App for AppGui {
 }
 
 impl AppGui {
+    const COLUMN_WIDTH: f32 = 35.0;
+    const ROW_HEIGHT: f32 = 30.0;
+    const SPACING: egui::Vec2 = egui::vec2(20.0, 20.0);
+
+    /// Initialize the app. Mostly needed for image loaders installation.
     fn initialize(&mut self, ctx: &eframe::egui::Context) {
         if self.initialized {
             panic!("Gui initialization called twice!");
@@ -58,86 +63,98 @@ impl AppGui {
     fn draw_top_panel(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("nav_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                // Back/Forward buttons
-                if ui.button("<").clicked() {
-                    self.app.navigate_back();
-                }
-
-                if ui.button(">").clicked() {
-                    self.app.navigate_forward();
-                }
+                self.draw_navigation_buttons(ui);
 
                 ui.separator();
 
-                if !self.is_editing_path {
-                    self.displayed_path = self.app.get_current_path().unwrap().to_string();
-                }
-
-                let path_text_box = ui.add(
-                    TextEdit::singleline(&mut self.displayed_path)
-                        .cursor_at_end(true)
-                        .frame(false)
-                        .clip_text(false),
-                );
-
-                if path_text_box.has_focus() {
-                    self.is_editing_path = true;
-                } else {
-                    if self.is_editing_path {
-                        self.is_editing_path = false;
-
-                        // New path given by user. Need to be tested:
-                        self.app.set_path(self.displayed_path.clone());
-                    }
-                }
+                self.draw_path_box(ui);
             })
         });
     }
 
-    fn draw_directory_panel(&mut self, ctx: &egui::Context) {
-        const COLUMN_WIDTH: f32 = 35.0;
-        const ROW_HEIGHT: f32 = 30.0;
-        const SPACING: egui::Vec2 = egui::vec2(20.0, 20.0);
+    fn draw_navigation_buttons(&mut self, ui: &mut egui::Ui) {
+        if ui.button("<").clicked() {
+            self.app.navigate_back();
+        }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let max_column_num = (ui.available_width() / COLUMN_WIDTH) as usize;
+        if ui.button(">").clicked() {
+            self.app.navigate_forward();
+        }
+    }
+
+    fn draw_path_box(&mut self, ui: &mut egui::Ui) {
+        if !self.is_editing_path {
+            self.displayed_path = self.app.get_current_path().unwrap().to_string();
+        }
+
+        let path_text_box = ui.add(
+            TextEdit::singleline(&mut self.displayed_path)
+                .cursor_at_end(true)
+                .frame(false)
+                .clip_text(false),
+        );
+
+        if path_text_box.has_focus() {
+            self.is_editing_path = true;
+        } else {
+            if self.is_editing_path {
+                self.is_editing_path = false;
+
+                // New path given manually by user. If path is invalid, App will ignore
+                self.app.set_path(self.displayed_path.clone());
+            }
+        }
+    }
+
+    fn draw_directory_panel(&mut self, ctx: &egui::Context) {
+        egui::CentralPanel::default().show(ctx, |central_ui| {
+            // max num needs to be calculated here for access to central_ui
+            let max_column_num = (central_ui.available_width() / AppGui::COLUMN_WIDTH) as usize;
 
             egui::Grid::new("file_grid")
-                .min_col_width(COLUMN_WIDTH)
-                .max_col_width(COLUMN_WIDTH)
-                .min_row_height(ROW_HEIGHT)
-                .spacing(SPACING)
-                .show(ui, |ui| {
-                    let file_itr_result = self.app.get_current_dir_contents().unwrap();
-                    let mut col_count = 0;
-
-                    for entry in file_itr_result {
-                        if col_count == max_column_num {
-                            col_count = 0;
-                            ui.end_row();
-                        } else {
-                            col_count += 1;
-                        }
-
-                        if let Ok(entry_result) = entry {
-                            let gui_dir_entry = DirEntry::from(entry_result);
-
-                            gui_dir_entry.draw(ui, self);
-                        }
-                    }
-                    ui.end_row();
+                .min_col_width(AppGui::COLUMN_WIDTH)
+                .max_col_width(AppGui::COLUMN_WIDTH)
+                .min_row_height(AppGui::ROW_HEIGHT)
+                .spacing(AppGui::SPACING)
+                .show(central_ui, |grid_ui| {
+                    self.draw_dir_entries(grid_ui, max_column_num);
                 });
 
             // Checking for cursor mass selection
-            if let Some(selection_rect) = self.get_selection_rectangle(ctx) {
-                // Needed for item highlighting
-                self.selection_area = Some(selection_rect.clone());
-
-                self.draw_selection_rectangle(ui, selection_rect);
-            } else {
-                self.selection_area = None;
-            }
+            self.handle_mass_selection(ctx, central_ui);
         });
+    }
+
+    fn draw_dir_entries(&mut self, ui: &mut egui::Ui, max_column_num: usize) {
+        let file_itr_result = self.app.get_current_dir_contents().unwrap();
+        let mut col_count = 0;
+
+        for entry in file_itr_result {
+            if col_count == max_column_num {
+                col_count = 0;
+                ui.end_row();
+            } else {
+                col_count += 1;
+            }
+
+            if let Ok(entry_result) = entry {
+                let gui_dir_entry = DirEntry::from(entry_result);
+
+                gui_dir_entry.draw(ui, self);
+            }
+        }
+        ui.end_row();
+    }
+
+    fn handle_mass_selection(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if let Some(selection_rect) = self.get_selection_rectangle(ctx) {
+            // Needed for item highlighting
+            self.selection_area = Some(selection_rect.clone());
+
+            self.draw_selection_rectangle(ui, selection_rect);
+        } else {
+            self.selection_area = None;
+        }
     }
 
     fn get_selection_rectangle(&self, ctx: &egui::Context) -> Option<egui::Rect> {
@@ -169,6 +186,7 @@ impl AppGui {
     }
 }
 
+/// Represents an entry inside the directory
 struct DirEntry<'a> {
     name: String,
     is_dir: bool,
@@ -177,6 +195,7 @@ struct DirEntry<'a> {
     file_button: egui::ImageButton<'a>,
 }
 
+/// Creating the entry is done by using from on fs::DirEntry
 impl From<fs::DirEntry> for DirEntry<'_> {
     fn from(value: fs::DirEntry) -> Self {
         let name = value.file_name().into_string().unwrap();
@@ -197,7 +216,6 @@ impl From<fs::DirEntry> for DirEntry<'_> {
     }
 }
 
-/// Struct represents an entry inside the file grid.
 /// Responsible for drawing itself inside the grid, including highlighting and
 /// button hooks.
 impl DirEntry<'_> {
