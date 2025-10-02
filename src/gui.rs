@@ -9,6 +9,7 @@ pub struct AppGui {
     initialized: bool,
     displayed_path: String,
     is_editing_path: bool,
+    selection_area: Option<egui::Rect>,
 }
 
 impl Default for AppGui {
@@ -18,6 +19,7 @@ impl Default for AppGui {
             initialized: false,
             displayed_path: String::new(),
             is_editing_path: false,
+            selection_area: None,
         }
     }
 }
@@ -120,15 +122,20 @@ impl AppGui {
                         if let Ok(entry_result) = entry {
                             let gui_dir_entry = DirEntry::from(entry_result);
 
-                            gui_dir_entry.draw(ui, &mut self.app);
+                            gui_dir_entry.draw(ui, self);
                         }
                     }
                     ui.end_row();
                 });
 
-            // First cursor drag rect attempt
+            // Checking for cursor mass selection
             if let Some(selection_rect) = self.get_selection_rectangle(ctx) {
+                // Needed for item highlighting
+                self.selection_area = Some(selection_rect.clone());
+
                 self.draw_selection_rectangle(ui, selection_rect);
+            } else {
+                self.selection_area = None;
             }
         });
     }
@@ -184,15 +191,17 @@ impl From<fs::DirEntry> for DirEntry {
 
 impl DirEntry {
     // A reference to the app is needed for button functionality
-    fn draw(&self, ui: &mut egui::Ui, app_ref: &mut App) {
+    // TODO CLEAN
+    fn draw(&self, ui: &mut egui::Ui, app_ref: &mut AppGui) {
         let dir_btn =
             egui::ImageButton::new(egui::include_image!("../assets/folder_icon.svg")).frame(false);
         let file_btn =
             egui::ImageButton::new(egui::include_image!("../assets/file_icon.svg")).frame(false);
 
         // Visual settigns
-        let hightlight_stroke = ui.style().visuals.widgets.hovered.bg_stroke;
-        let dir_hightlight_padding = 2.0;
+        let mut hightlight_stroke = ui.style().visuals.widgets.hovered.bg_stroke;
+        hightlight_stroke.width = 2.0;
+        let dir_hightlight_padding = 1.5;
         let file_hightlight_padding = 1.0;
         let highlight_rounding = 4.0;
         let hightlight_kind = egui::StrokeKind::Outside;
@@ -201,8 +210,20 @@ impl DirEntry {
             if self.is_dir {
                 let dir_btn_handle = ui.add(dir_btn);
 
-                // Creating custom hover effect for button
-                if dir_btn_handle.hovered() {
+                // There is a selection in progress
+                if app_ref.selection_area.is_some() {
+                    let button_rect = dir_btn_handle.rect;
+                    if app_ref.selection_area.unwrap().contains_rect(button_rect) {
+                        let hightlight_area = dir_btn_handle.rect.expand(dir_hightlight_padding);
+                        ui.painter().rect_stroke(
+                            hightlight_area,
+                            highlight_rounding,
+                            hightlight_stroke,
+                            hightlight_kind,
+                        );
+                    }
+                // If no selection, we still need hover effects
+                } else if dir_btn_handle.hovered() {
                     let hightlight_area = dir_btn_handle.rect.expand(dir_hightlight_padding);
                     ui.painter().rect_stroke(
                         hightlight_area,
@@ -213,15 +234,27 @@ impl DirEntry {
                 }
 
                 if dir_btn_handle.clicked() {
-                    app_ref.open_dir(self.name.clone());
+                    app_ref.app.open_dir(self.name.clone());
                 }
             } else {
                 let file_btn_handle = ui.add(file_btn);
 
-                if file_btn_handle.hovered() {
-                    let highlight_area = file_btn_handle.rect.expand(file_hightlight_padding);
+                if app_ref.selection_area.is_some() {
+                    let button_rect = file_btn_handle.rect;
+                    if app_ref.selection_area.unwrap().contains_rect(button_rect) {
+                        let hightlight_area = file_btn_handle.rect.expand(file_hightlight_padding);
+                        ui.painter().rect_stroke(
+                            hightlight_area,
+                            highlight_rounding,
+                            hightlight_stroke,
+                            hightlight_kind,
+                        );
+                    }
+                // If no selection, we still need hover effects
+                } else if file_btn_handle.hovered() {
+                    let hightlight_area = file_btn_handle.rect.expand(file_hightlight_padding);
                     ui.painter().rect_stroke(
-                        highlight_area,
+                        hightlight_area,
                         highlight_rounding,
                         hightlight_stroke,
                         hightlight_kind,
