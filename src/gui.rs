@@ -1,6 +1,8 @@
 use std::{fs, process::Command};
 
-use eframe::egui::{self, Label, Response, RichText, TextEdit};
+use eframe::egui::{
+    self, Label, Popup, PopupCloseBehavior, RectAlign, Response, RichText, TextEdit,
+};
 
 use crate::app::App;
 
@@ -230,12 +232,16 @@ impl DirEntry<'_> {
                 self.handle_highlighting(ui, app_ref, &dir_btn_handle);
 
                 self.handle_click(app_ref, &dir_btn_handle);
+
+                self.handle_right_click(app_ref, &dir_btn_handle);
             } else {
                 let file_btn_handle = ui.add(self.file_button.clone());
 
                 self.handle_highlighting(ui, app_ref, &file_btn_handle);
 
                 self.handle_click(app_ref, &file_btn_handle);
+
+                self.handle_right_click(app_ref, &file_btn_handle);
             }
 
             ui.add(
@@ -284,6 +290,7 @@ impl DirEntry<'_> {
             }
         } else {
             // Platform specific open logic
+
             // TODO Verify this works
             #[cfg(target_os = "windows")]
             {
@@ -301,5 +308,20 @@ impl DirEntry<'_> {
                 }
             }
         }
+    }
+
+    fn handle_right_click(&self, app_ref: &mut AppGui, btn_handle: &Response) {
+        let close_behavior = PopupCloseBehavior::CloseOnClickOutside;
+        let align = RectAlign::BOTTOM_START;
+        Popup::context_menu(btn_handle)
+            .gap(4.0)
+            .align(align)
+            .close_behavior(close_behavior)
+            .show(|ui| {
+                if ui.button("Delete").clicked() {
+                    app_ref.app.delete_file_or_dir(self.abs_path.clone());
+                    ui.close();
+                }
+            });
     }
 }
