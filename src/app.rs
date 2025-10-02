@@ -81,6 +81,14 @@ impl App {
         }
     }
 
+    pub fn rename_file_or_dir(&mut self, path: String, new_name: String) -> io::Result<()> {
+        let mut new_path = PathBuf::from(path.clone());
+        new_path.pop();
+        new_path.push(new_name);
+
+        fs::rename(path, new_path)
+    }
+
     fn is_file(path: &String) -> bool {
         fs::metadata(path).map(|m| m.is_file()).unwrap_or(false)
     }

@@ -319,7 +319,8 @@ impl DirEntry<'_> {
             .close_behavior(close_behavior)
             .show(|ui| {
                 if ui.button("Delete").clicked() {
-                    app_ref.app.delete_file_or_dir(self.abs_path.clone());
+                    // TODO Handle possible error in action
+                    let _ = app_ref.app.delete_file_or_dir(self.abs_path.clone());
                     ui.close();
                 }
             });
