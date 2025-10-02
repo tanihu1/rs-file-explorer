@@ -125,7 +125,40 @@ impl AppGui {
                     }
                     ui.end_row();
                 });
+
+            // First cursor drag rect attempt
+            if let Some(selection_rect) = self.get_selection_rectangle(ctx) {
+                self.draw_selection_rectangle(ui, selection_rect);
+            }
         });
+    }
+
+    fn get_selection_rectangle(&self, ctx: &egui::Context) -> Option<egui::Rect> {
+        // ctx.input locks ctx!
+        let mut result = None;
+        ctx.input(|i| {
+            if i.pointer.any_down() {
+                let start_point = i.pointer.press_origin();
+                let current_point = i.pointer.latest_pos();
+
+                if start_point.is_some() && current_point.is_some() {
+                    result = Some(egui::Rect::from_two_pos(
+                        start_point.unwrap(),
+                        current_point.unwrap(),
+                    ));
+                }
+            }
+        });
+        result
+    }
+
+    fn draw_selection_rectangle(&self, ui: &egui::Ui, rect: egui::Rect) {
+        let stroke = ui.style().visuals.widgets.hovered.bg_stroke;
+        let stroke_kind = egui::StrokeKind::Outside;
+        let corner_radius = 1.0;
+
+        ui.painter()
+            .rect_stroke(rect, corner_radius, stroke, stroke_kind);
     }
 }
 
