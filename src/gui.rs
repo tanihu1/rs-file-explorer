@@ -220,7 +220,11 @@ impl DirEntry<'_> {
                 self.handle_click(app_ref, &file_btn_handle);
             }
 
-            ui.add(Label::new(RichText::new(self.name.clone()).size(10.0)).wrap());
+            ui.add(
+                Label::new(RichText::new(self.name.clone()).size(10.0))
+                    .wrap()
+                    .selectable(false),
+            );
         });
     }
 
@@ -236,7 +240,7 @@ impl DirEntry<'_> {
         // There is a selection in progress
         if app_ref.selection_area.is_some() {
             let button_rect = btn_handle.rect;
-            if app_ref.selection_area.unwrap().contains_rect(button_rect) {
+            if app_ref.selection_area.unwrap().intersects(button_rect) {
                 ui.painter().rect_stroke(
                     highlight_area,
                     highlight_rounding,
@@ -274,6 +278,7 @@ impl DirEntry<'_> {
             #[cfg(target_os = "linux")]
             {
                 if btn_handle.clicked() {
+                    dbg!(&self.abs_path);
                     let _ = Command::new("xdg-open").arg(&self.abs_path).spawn();
                 }
             }
