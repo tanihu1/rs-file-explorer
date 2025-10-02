@@ -1,6 +1,6 @@
 use std::{fs, process::Command};
 
-use eframe::egui::{self, Label, RichText, TextEdit};
+use eframe::egui::{self, Label, Response, RichText, TextEdit};
 
 use crate::app::App;
 
@@ -169,116 +169,114 @@ impl AppGui {
     }
 }
 
-struct DirEntry {
+struct DirEntry<'a> {
     name: String,
     is_dir: bool,
     abs_path: String,
+    dir_button: egui::ImageButton<'a>,
+    file_button: egui::ImageButton<'a>,
 }
 
-impl From<fs::DirEntry> for DirEntry {
+impl From<fs::DirEntry> for DirEntry<'_> {
     fn from(value: fs::DirEntry) -> Self {
         let name = value.file_name().into_string().unwrap();
         let is_dir = value.file_type().unwrap().is_dir();
         let abs_path = value.path().to_str().unwrap().to_string();
+        let dir_button =
+            egui::ImageButton::new(egui::include_image!("../assets/folder_icon.svg")).frame(false);
+        let file_button =
+            egui::ImageButton::new(egui::include_image!("../assets/file_icon.svg")).frame(false);
 
         Self {
             name,
             is_dir,
             abs_path,
+            dir_button,
+            file_button,
         }
     }
 }
 
-impl DirEntry {
+/// Struct represents an entry inside the file grid.
+/// Responsible for drawing itself inside the grid, including highlighting and
+/// button hooks.
+impl DirEntry<'_> {
     // A reference to the app is needed for button functionality
-    // TODO CLEAN
-    fn draw(&self, ui: &mut egui::Ui, app_ref: &mut AppGui) {
-        let dir_btn =
-            egui::ImageButton::new(egui::include_image!("../assets/folder_icon.svg")).frame(false);
-        let file_btn =
-            egui::ImageButton::new(egui::include_image!("../assets/file_icon.svg")).frame(false);
-
+    pub fn draw(&self, ui: &mut egui::Ui, app_ref: &mut AppGui) {
         // Visual settigns
-        let mut hightlight_stroke = ui.style().visuals.widgets.hovered.bg_stroke;
-        hightlight_stroke.width = 2.0;
-        let dir_hightlight_padding = 1.5;
-        let file_hightlight_padding = 1.0;
-        let highlight_rounding = 4.0;
-        let hightlight_kind = egui::StrokeKind::Outside;
 
         ui.vertical(|ui| {
             if self.is_dir {
-                let dir_btn_handle = ui.add(dir_btn);
+                let dir_btn_handle = ui.add(self.dir_button.clone());
 
-                // There is a selection in progress
-                if app_ref.selection_area.is_some() {
-                    let button_rect = dir_btn_handle.rect;
-                    if app_ref.selection_area.unwrap().contains_rect(button_rect) {
-                        let hightlight_area = dir_btn_handle.rect.expand(dir_hightlight_padding);
-                        ui.painter().rect_stroke(
-                            hightlight_area,
-                            highlight_rounding,
-                            hightlight_stroke,
-                            hightlight_kind,
-                        );
-                    }
-                // If no selection, we still need hover effects
-                } else if dir_btn_handle.hovered() {
-                    let hightlight_area = dir_btn_handle.rect.expand(dir_hightlight_padding);
-                    ui.painter().rect_stroke(
-                        hightlight_area,
-                        highlight_rounding,
-                        hightlight_stroke,
-                        hightlight_kind,
-                    );
-                }
+                self.handle_highlighting(ui, app_ref, &dir_btn_handle);
 
-                if dir_btn_handle.clicked() {
-                    app_ref.app.open_dir(self.name.clone());
-                }
+                self.handle_click(app_ref, &dir_btn_handle);
             } else {
-                let file_btn_handle = ui.add(file_btn);
+                let file_btn_handle = ui.add(self.file_button.clone());
 
-                if app_ref.selection_area.is_some() {
-                    let button_rect = file_btn_handle.rect;
-                    if app_ref.selection_area.unwrap().contains_rect(button_rect) {
-                        let hightlight_area = file_btn_handle.rect.expand(file_hightlight_padding);
-                        ui.painter().rect_stroke(
-                            hightlight_area,
-                            highlight_rounding,
-                            hightlight_stroke,
-                            hightlight_kind,
-                        );
-                    }
-                // If no selection, we still need hover effects
-                } else if file_btn_handle.hovered() {
-                    let hightlight_area = file_btn_handle.rect.expand(file_hightlight_padding);
-                    ui.painter().rect_stroke(
-                        hightlight_area,
-                        highlight_rounding,
-                        hightlight_stroke,
-                        hightlight_kind,
-                    );
-                }
+                self.handle_highlighting(ui, app_ref, &file_btn_handle);
 
-                // TODO Verify this works
-                #[cfg(target_os = "windows")]
-                {
-                    let path = self.abs_path.clone();
-                    if file_btn.clicked() {
-                        let _ = Command::new("explorer").arg("/select,").arg(&path).spawn();
-                    }
-                }
-
-                #[cfg(target_os = "linux")]
-                {
-                    if file_btn_handle.clicked() {
-                        let _ = Command::new("xdg-open").arg(&self.abs_path).spawn();
-                    }
-                }
+                self.handle_click(app_ref, &file_btn_handle);
             }
-            // ui.label(RichText::new(self.name.clone()).size(10.0));
+
             ui.add(Label::new(RichText::new(self.name.clone()).size(10.0)).wrap());
         });
+    }
+
+    fn handle_highlighting(&self, ui: &mut egui::Ui, app_ref: &mut AppGui, btn_handle: &Response) {
+        // Highlight visuals
+        let mut highlight_stroke = ui.style().visuals.widgets.hovered.bg_stroke;
+        highlight_stroke.width = 2.0;
+        let highlight_padding = if self.is_dir { 1.5 } else { 1.0 };
+        let highlight_rounding = 4.0;
+        let highlight_kind = egui::StrokeKind::Outside;
+        let highlight_area = btn_handle.rect.expand(highlight_padding);
+
+        // There is a selection in progress
+        if app_ref.selection_area.is_some() {
+            let button_rect = btn_handle.rect;
+            if app_ref.selection_area.unwrap().contains_rect(button_rect) {
+                ui.painter().rect_stroke(
+                    highlight_area,
+                    highlight_rounding,
+                    highlight_stroke,
+                    highlight_kind,
+                );
+            }
+        // If no selection, we still need hover effects
+        } else if btn_handle.hovered() {
+            ui.painter().rect_stroke(
+                highlight_area,
+                highlight_rounding,
+                highlight_stroke,
+                highlight_kind,
+            );
+        }
+    }
+
+    fn handle_click(&self, app_ref: &mut AppGui, btn_handle: &Response) {
+        if self.is_dir {
+            if btn_handle.clicked() {
+                app_ref.app.open_dir(self.name.clone());
+            }
+        } else {
+            // Platform specific open logic
+            // TODO Verify this works
+            #[cfg(target_os = "windows")]
+            {
+                let path = self.abs_path.clone();
+                if file_btn.clicked() {
+                    let _ = Command::new("explorer").arg("/select,").arg(&path).spawn();
+                }
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                if btn_handle.clicked() {
+                    let _ = Command::new("xdg-open").arg(&self.abs_path).spawn();
+                }
+            }
+        }
     }
 }
