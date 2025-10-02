@@ -1,5 +1,6 @@
 use std::{
     fs::{self, ReadDir, read_dir},
+    io,
     path::PathBuf,
 };
 
@@ -53,6 +54,7 @@ impl App {
         }
     }
 
+    // TODO validate request?
     pub fn open_dir(&mut self, dir_name: String) {
         self.current_path.push(dir_name);
 
@@ -61,8 +63,29 @@ impl App {
     }
 
     pub fn set_path(&mut self, path: String) {
-        if fs::read_dir(&path).is_ok() {
+        if Self::is_dir(&path) {
             self.current_path = PathBuf::from(path);
         }
+    }
+
+    pub fn delete_file_or_dir(&mut self, path: String) -> io::Result<()> {
+        if Self::is_file(&path) {
+            fs::remove_file(path)
+        } else if Self::is_dir(&path) {
+            fs::remove_dir_all(path)
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Path doesnt lead to a valid file or a directory",
+            ))
+        }
+    }
+
+    fn is_file(path: &String) -> bool {
+        fs::metadata(path).map(|m| m.is_file()).unwrap_or(false)
+    }
+
+    fn is_dir(path: &String) -> bool {
+        fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false)
     }
 }
