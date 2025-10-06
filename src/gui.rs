@@ -122,7 +122,7 @@ impl AppGui {
                     self.draw_dir_entries(grid_ui, max_column_num);
                 });
 
-            // Checking for cursor mass selection
+            // Checking for cursor rectanglular selection
             self.handle_mass_selection(ctx, central_ui);
         });
     }
