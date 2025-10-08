@@ -1,11 +1,11 @@
-use std::{fs, process::Command};
+use std::{cell::RefCell, fs, process::Command};
 
 use eframe::egui::{self, Label, Response, RichText, TextEdit};
 
 use crate::app::App;
 
 pub struct AppGui {
-    app: App,
+    app: RefCell<App>,
     initialized: bool,
     displayed_path: String,
     is_editing_path: bool,
@@ -15,7 +15,7 @@ pub struct AppGui {
 impl Default for AppGui {
     fn default() -> Self {
         Self {
-            app: App::default(),
+            app: RefCell::new(App::default()),
             initialized: false,
             displayed_path: String::new(),
             is_editing_path: false,
@@ -50,7 +50,8 @@ impl AppGui {
 
         egui_extras::install_image_loaders(ctx);
 
-        let displayed_path = self.app.get_current_path().unwrap();
+        let app = self.app.borrow();
+        let displayed_path = app.get_current_path().unwrap();
         self.displayed_path = displayed_path.to_string();
 
         self.initialized = true;
@@ -74,17 +75,22 @@ impl AppGui {
 
     fn draw_navigation_buttons(&mut self, ui: &mut egui::Ui) {
         if ui.button("<").clicked() {
-            self.app.navigate_back();
+            self.app.borrow_mut().navigate_back();
         }
 
         if ui.button(">").clicked() {
-            self.app.navigate_forward();
+            self.app.borrow_mut().navigate_forward();
         }
     }
 
     fn draw_path_box(&mut self, ui: &mut egui::Ui) {
         if !self.is_editing_path {
-            self.displayed_path = self.app.get_current_path().unwrap().to_string();
+            self.displayed_path = self
+                .app
+                .borrow_mut()
+                .get_current_path()
+                .unwrap()
+                .to_string();
         }
 
         let path_text_box = ui.add(
@@ -101,7 +107,7 @@ impl AppGui {
                 self.is_editing_path = false;
 
                 // New path given manually by user. If path is invalid, App will ignore
-                self.app.set_path(self.displayed_path.clone());
+                self.app.borrow_mut().set_path(self.displayed_path.clone());
             }
         }
     }
@@ -126,7 +132,7 @@ impl AppGui {
     }
 
     fn draw_dir_entries(&mut self, ui: &mut egui::Ui, max_column_num: usize) {
-        let file_itr_result = self.app.get_current_dir_contents().unwrap();
+        let file_itr_result = self.app.borrow_mut().get_current_dir_contents().unwrap();
         let mut col_count = 0;
 
         for entry in file_itr_result {
@@ -280,7 +286,7 @@ impl DirEntry<'_> {
     fn handle_click(&self, app_ref: &mut AppGui, btn_handle: &Response) {
         if self.is_dir {
             if btn_handle.clicked() {
-                app_ref.app.open_dir(self.name.clone());
+                app_ref.app.borrow_mut().open_dir(self.name.clone());
             }
         } else {
             // Platform specific open logic
