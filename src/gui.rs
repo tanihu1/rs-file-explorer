@@ -4,27 +4,31 @@ use eframe::egui::{self, Label, Response, RichText, TextEdit};
 
 use crate::app::App;
 
-pub struct AppGui {
+pub struct AppGui<'a> {
     app: RefCell<App>,
     initialized: bool,
     displayed_path: String,
     is_editing_path: bool,
+    path_changed: bool,
     selection_area: Option<egui::Rect>,
+    dir_entries: Vec<DirEntry<'a>>,
 }
 
-impl Default for AppGui {
+impl Default for AppGui<'_> {
     fn default() -> Self {
         Self {
             app: RefCell::new(App::default()),
             initialized: false,
             displayed_path: String::new(),
             is_editing_path: false,
+            path_changed: false,
             selection_area: None,
+            dir_entries: vec![],
         }
     }
 }
 
-impl eframe::App for AppGui {
+impl eframe::App for AppGui<'_> {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         // TODO Lazy init, check for better initialization?
         if !self.initialized {
@@ -37,7 +41,7 @@ impl eframe::App for AppGui {
     }
 }
 
-impl AppGui {
+impl AppGui<'_> {
     const COLUMN_WIDTH: f32 = 35.0;
     const ROW_HEIGHT: f32 = 30.0;
     const SPACING: egui::Vec2 = egui::vec2(20.0, 20.0);
@@ -132,10 +136,14 @@ impl AppGui {
     }
 
     fn draw_dir_entries(&mut self, ui: &mut egui::Ui, max_column_num: usize) {
-        let file_itr_result = self.app.borrow_mut().get_current_dir_contents().unwrap();
+        if self.path_changed {
+            self.update_dir_entries();
+        }
+
         let mut col_count = 0;
 
-        for entry in file_itr_result {
+        // TODO CONTINUE
+        for entry in self.dir_entries {
             if col_count == max_column_num {
                 col_count = 0;
                 ui.end_row();
@@ -143,13 +151,17 @@ impl AppGui {
                 col_count += 1;
             }
 
-            if let Ok(entry_result) = entry {
-                let gui_dir_entry = DirEntry::from(entry_result);
-
-                gui_dir_entry.draw(ui, self);
-            }
+            entry.draw(ui, self);
         }
         ui.end_row();
+    }
+
+    fn update_dir_entries(&mut self) {
+        self.path_changed = false;
+
+        let iter = self.app.borrow_mut().get_current_dir_contents().unwrap();
+
+        self.dir_entries = iter.map(|entry| DirEntry::from(entry.unwrap())).collect();
     }
 
     fn handle_mass_selection(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
